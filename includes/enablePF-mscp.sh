@@ -1,14 +1,13 @@
 #!/bin/bash
-#title           :enablePF-mscp.sh
-#description     :This script will configure the packet filter `pf` with the settings recommended by the macOS Security Compliance Project (MSCP)
-#author			 :Dan Brodjieski
-#date            :20231005
-#version         :1.0    
-#usage			 :enablePF-mscp.sh [--uninstall]
-#notes           :Script must be run with privileges
-#				 :Configuring `pf` with a content filter installed may have unexpected results
-#==============================================================================
-
+# Title          : enablePF-mscp.sh
+# Description    : This script will configure the packet filter `pf` with the settings recommended by the macOS Security Compliance Project (MSCP)
+# Author		 : Dan Brodjieski
+# Date           : 2023-10-05
+# Version        : 1.0    
+# Usage			 : enablePF-mscp.sh [--uninstall]
+# Notes          : Script must be run with privileges
+#				 : Configuring `pf` with a content filter installed may have unexpected results
+# Changelog		 : 2023-10-05 - Added --uninstall parameter, refactored script for better functionality 
 
 #### verify running as root
 if [[ $EUID -ne 0 ]]; then
@@ -26,7 +25,7 @@ mdm_managed=$(/usr/bin/osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWi
 
 #enabling macos application firewall
 enable_macos_application_firewall () {
-
+	echo "The macOS application firewall is not managed by a profile, enabling from CLI"
 	/usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
 	/usr/libexec/ApplicationFirewall/socketfilterfw --setloggingopt detail 
 	/usr/libexec/ApplicationFirewall/socketfilterfw --setallowsigned on
@@ -36,7 +35,7 @@ enable_macos_application_firewall () {
 
 #enabling pf firewall with mscp rules
 enable_pf_firewall_with_mscp_rules () {
-	
+	echo "Creating LaunchDeamon to load the MSCP rules"
 	if [[ -e "$launchd_pfctl_plist" ]]; then
 		echo "LaunchDaemon already exists, flushing and reloading rules..."
 		pfctl -e 2> /dev/null
@@ -64,7 +63,7 @@ enable_pf_firewall_with_mscp_rules () {
 
 # append the mscp anchors to pf.conf
 configure_pf_config_add_mscp_anchors () {
-
+	echo "Adding the MSCP anchors to /etc/pf.conf"
 	# check to see if mscp anchors exists
 	anchors_exist=$(grep -c '^anchor "mscp_pf_anchors"' /etc/pf.conf)
 
@@ -80,6 +79,7 @@ configure_pf_config_add_mscp_anchors () {
 
 # Create /etc/pf.anchors/mscp_pf_anchors
 create_mscp_pf_anchors () {
+	echo "Creating the MSCP anchor configuration file"
 if [[ -e /etc/pf.anchors/mscp_pf_anchors ]]; then
 	echo "mscp Anchor file exists, deleting and recreating..."
 	rm -f /etc/pf.anchors/mscp_pf_anchors
@@ -172,6 +172,8 @@ ENDCONFIG
 
 # function to remove legacy setup if exists
 remove_macsec_setup() {
+	echo "References to macsec appear to exist, removing..."
+
 	launchctl disable system/macsec.pfctl
 	launchctl bootout system $legacy_launchd_plist
 	rm -rf $legacy_launchd_plist
@@ -180,7 +182,7 @@ remove_macsec_setup() {
 	anchors_exist=$(grep -c '^anchor "macsec_pf_anchors"' /etc/pf.conf)
 
 	if [[ ! $anchors_exist == "0" ]];then
-		sed -i'' '/macsec/d' /etc/pf.conf
+		sed -i "" '/macsec/d' /etc/pf.conf
 	else
 		echo "macsec anchors do not exist, continuing..."
 	fi
@@ -189,6 +191,7 @@ remove_macsec_setup() {
 }
 
 uninstall_mscp_pf(){
+	echo "Removing MSCP configuration files from pf"
 	if [[ -e "$launchd_pfctl_plist" ]]; then
 		echo "LaunchDaemon exists, unloading and removing"
 		#remove mscp pf components from launchd
@@ -201,7 +204,7 @@ uninstall_mscp_pf(){
 	anchors_exist=$(grep -c '^anchor "mscp_pf_anchors"' /etc/pf.conf)
 
 	if [[ ! $anchors_exist == "0" ]];then
-		sed -i'' '/mscp/d' /etc/pf.conf
+		sed -i "" '/mscp/d' /etc/pf.conf
 	else
 		echo "mscp anchors do not exist, continuing..."
 	fi
@@ -209,14 +212,17 @@ uninstall_mscp_pf(){
 	rm -f /etc/pf.anchors/mscp_pf_anchors
 
 	# flush rules and reload pf
+	echo "Flushing rules and reloading pf"
 	pfctl -f /etc/pf.conf 2> /dev/null #flush the pf ruleset (reload the rules)   
 
 }
 
 #### Main Script ####
 
-if [[ $1 == "--uninstall"]]; then
-	remove_macsec_setup
+if [[ $1 == "--uninstall" ]]; then
+	if [[ -e "$legacy_launchd_plist" ]]; then
+		remove_macsec_setup
+	fi
 	uninstall_mscp_pf
 	exit 0
 fi
