@@ -219,7 +219,29 @@ uninstall_mscp_pf(){
 
 #### Main Script ####
 
-if [[ $1 == "--uninstall" ]]; then
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -u|--uninstall)
+      UNINSTALL="true"
+      shift # past argument
+      shift # past value
+      ;;
+	-*|--*)
+      echo "Unknown option $1"
+	  exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1") # save positional arg
+      shift # past argument
+      ;;
+  esac
+done
+
+set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
+if [[ $UNINSTALL == "true" ]]; then
 	if [[ -e "$legacy_launchd_plist" ]]; then
 		remove_macsec_setup
 	fi
