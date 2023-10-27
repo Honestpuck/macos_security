@@ -27,9 +27,9 @@ mdm_managed=$(/usr/bin/osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWi
 enable_macos_application_firewall () {
 	echo "The macOS application firewall is not managed by a profile, enabling from CLI"
 	/usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
-	/usr/libexec/ApplicationFirewall/socketfilterfw --setloggingopt detail 
+	/usr/libexec/ApplicationFirewall/socketfilterfw --setloggingopt detail
 	/usr/libexec/ApplicationFirewall/socketfilterfw --setallowsigned on
-	/usr/libexec/ApplicationFirewall/socketfilterfw --setallowsignedapp on 
+	/usr/libexec/ApplicationFirewall/socketfilterfw --setallowsignedapp on
 
 }
 
@@ -57,7 +57,7 @@ enable_pf_firewall_with_mscp_rules () {
 	launchctl enable system/mscp.pfctl
 	launchctl bootstrap system $launchd_pfctl_plist
 
-	pfctl -f /etc/pf.conf 2> /dev/null #flush the pf ruleset (reload the rules)   
+	pfctl -f /etc/pf.conf 2> /dev/null #flush the pf ruleset (reload the rules)
 
 }
 
